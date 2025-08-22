@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Guess the Slope</title>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; margin: 0; padding: 0; background: #f4f4f4; }
+    #canvas { background: #fff; border: 1px solid #ccc; margin: 20px auto; display: block; }
+    #controls { margin: 20px; }
+    #result { margin: 20px; font-size: 1.2em; }
+    button { padding: 8px 16px; font-size: 1em; }
+    input[type="text"] { padding: 6px; font-size: 1em; width: 80px; }
+  </style>
+</head>
+<body>
+  <h1>Guess the Slope</h1>
+  <canvas id="canvas" width="500" height="500"></canvas>
+  <div id="controls">
+    <label for="guess">Your guess for the slope (as a fraction or decimal): </label>
+    <input type="text" id="guess" autocomplete="off">
+    <button id="submit">Submit</button>
+  </div>
+  <div id="result"></div>
+  <button id="again" style="display:none;">Again</button>
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const size = 500;
+    const min = -10, max = 10;
+    const scale = size / (max - min);
+    let p1, p2, slopeNum, slopeDen, slopeDec;
+
+    function randInt(a, b) {
+      return Math.floor(Math.random() * (b - a + 1)) + a;
+    }
+
+    function gcd(a, b) {
+      return b ? gcd(b, a % b) : Math.abs(a);
+    }
+
+    function drawGrid() {
+      ctx.clearRect(0, 0, size, size);
+      ctx.strokeStyle = '#ddd';
+      ctx.lineWidth = 1;
+      for (let i = min; i <= max; i++) {
+        // Vertical lines
+        ctx.beginPath();
+        ctx.moveTo((i - min) * scale, 0);
+        ctx.lineTo((i - min) * scale, size);
+        ctx.stroke();
+        // Horizontal lines
+        ctx.beginPath();
+        ctx.moveTo(0, (max - i) * scale);
+        ctx.lineTo(size, (max - i) * scale);
+        ctx.stroke();
+      }
+      // Axes
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = 2;
+      // y-axis
+      ctx.beginPath();
+      ctx.moveTo((-min) * scale, 0);
+      ctx.lineTo((-min) * scale, size);
+      ctx.stroke();
+      // x-axis
+      ctx.beginPath();
+      ctx.moveTo(0, (max) * scale);
+      ctx.lineTo(size, (max) * scale);
+      ctx.stroke();
+    }
+
+    function coordToPixel(x, y) {
+      return [ (x - min) * scale, (max - y) * scale ];
+    }
+
+    function pickPoints() {
+      do {
+        p1 = { x: randInt(min, max), y: randInt(min, max) };
+        p2 = { x: randInt(min, max), y: randInt(min, max) };
+      } while ((p1.x === p2.x) || (p1.y === p2.y) || (p1.x === p2.x && p1.y === p2.y));
+      slopeNum = p2.y - p1.y;
+      slopeDen = p2.x - p1.x;
+      let d = gcd(slopeNum, slopeDen);
+      slopeNum /= d;
+      slopeDen /= d;
+      slopeDec = (p2.y - p1.y) / (p2.x - p1.x);
+    }
+
+    function drawPointsAndLine() {
+      // Line
+      ctx.strokeStyle = '#e74c3c';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      let [x1, y1] = coordToPixel(p1.x, p1.y);
+      let [x2, y2] = coordToPixel(p2.x, p2.y);
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+      // Points
+      ctx.fillStyle = '#2980b9';
+      ctx.beginPath();
+      ctx.arc(x1, y1, 7, 0, 2 * Math.PI);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(x2, y2, 7, 0, 2 * Math.PI);
+      ctx.fill();
+      // Labels
+      ctx.fillStyle = '#000';
+      ctx.font = '16px Arial';
+      ctx.fillText(`(${p1.x}, ${p1.y})`, x1 + 10, y1 - 10);
+      ctx.fillText(`(${p2.x}, ${p2.y})`, x2 + 10, y2 - 10);
+    }
+
+    function newProblem() {
+      pickPoints();
+      drawGrid();
+      drawPointsAndLine();
+      document.getElementById('result').textContent = '';
+      document.getElementById('guess').value = '';
+      document.getElementById('again').style.display = 'none';
+      document.getElementById('controls').style.display = '';
+    }
+
+    function parseFraction(str) {
+      str = str.trim();
+      if (str.includes('/')) {
+        let [num, den] = str.split('/').map(Number);
+        if (!isNaN(num) && !isNaN(den) && den !== 0) return num / den;
+      }
+      let val = Number(str);
+      if (!isNaN(val)) return val;
+      return null;
+    }
+
+    document.getElementById('submit').onclick = function() {
+      let guess = document.getElementById('guess').value;
+      let val = parseFraction(guess);
+      if (val === null) {
+        document.getElementById('result').textContent = 'Please enter a valid number or fraction.';
+        return;
+      }
+      if (Math.abs(val - slopeDec) < 1e-6) {
+        document.getElementById('result').innerHTML = `Correct!<br>Fraction: <b>${slopeNum}/${slopeDen}</b><br>Decimal: <b>${slopeDec.toFixed(3)}</b>`;
+        document.getElementById('again').style.display = '';
+        document.getElementById('controls').style.display = 'none';
+      } else {
+        document.getElementById('result').textContent = 'Incorrect. Try again!';
+      }
+    };
+
+    document.getElementById('again').onclick = newProblem;
+
+    newProblem();
+  </script>
+</body>
+</html>
